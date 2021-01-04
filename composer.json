@@ -1,0 +1,20 @@
+{
+  "name": "alexku/blt-github-actions",
+  "type": "library",
+  "description": "Github Actions integration for Acquia BLT.",
+  "license": "GPL-2.0+",
+  "authors":[
+    {
+      "name": "Alex Ku",
+      "role": "Maintainer"
+    }
+  ],
+  "require": {},
+  "extra": {},
+  "autoload": {
+    "psr-4": {
+      "Acquia\\GithubActions\\": "./src/"
+    },
+    "classmap":["src/Blt/Plugin/EnvironmentDetector/GithubActionsDetector.php"]
+  }
+}

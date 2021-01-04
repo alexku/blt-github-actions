@@ -1,0 +1,119 @@
+name: Default workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - stage
+      - master
+  pull_request:
+    branches:
+      - develop
+      - stage
+      - master
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  full:
+    name: Full (Build, Validate, Test, Deploy)
+
+    runs-on: ubuntu-16.04
+    container:
+      image: acquia/ads-local:lando-php-7.3-nodejs-12
+
+    services:
+      database:
+        image: mysql:5.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+        - 32574:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    env:
+      CI: GITHUB_ACTIONS
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER_PASSWORD: drupal
+      MYSQL_USER_NAME: drupal
+      MYSQL_DATABASE_NAME: drupal
+      MYSQL_HOST: database
+      SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+      SSH_DEPLOYMENT_KEY: ${{ secrets.BLT_SSH_DEPLOYMENT_KEY }}
+
+    steps:
+    # Using older version of actions/checkout to be able to use Ubuntu 16.04
+    - uses: actions/checkout@v1
+
+    - name: Prepare environment variables
+      run: |
+        echo "GITHUB_REF_NAME=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        echo "COMPOSER_BIN=$(echo ${GITHUB_WORKSPACE}/vendor/bin)" >> $GITHUB_ENV
+        echo "BLT_DIR=$(echo ${GITHUB_WORKSPACE}/vendor/acquia/blt)" >> $GITHUB_ENV
+        echo "SCRIPT_DIR=$(echo ${GITHUB_WORKSPACE}/vendor/alexku/blt-github-actions/scripts/github-actions)" >> $GITHUB_ENV
+
+    # Caching based on https://github.com/marketplace/actions/composer-php-actions#caching-dependencies-for-faster-builds
+    - name: Determine Composer cache directory
+      shell: bash
+      run: "echo \"COMPOSER_CACHE_DIR=$(composer config cache-dir)\" >> $GITHUB_ENV"
+
+    - name: Cache dependencies installed with Composer
+      uses: actions/cache@v2
+      with:
+        path: |
+          "${{ env.COMPOSER_CACHE_DIR }}"
+          $GITHUB_WORKSPACE/vendor
+          $GITHUB_WORKSPACE/docroot/core
+          $GITHUB_WORKSPACE/docroot/libraries
+          $GITHUB_WORKSPACE/docroot/modules/contrib
+          $GITHUB_WORKSPACE/docroot/themes/contrib
+          $GITHUB_WORKSPACE/docroot/profiles/contrib
+        key: os-${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+
+    - name: Cache node modules
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.npm
+          ~/.nvm
+        key: ${{ runner.os }}-build-${{ github.ref }}
+    # Caching END
+
+    - name: Composer and npm install
+      run: |
+        composer validate
+        composer self-update
+        composer install
+        npm install -g gulp-cli gulp
+
+    - name: Validate app
+      run: bash $SCRIPT_DIR/validate_app.sh
+
+    - name: Setup environment
+      run: bash $SCRIPT_DIR/setup_env.sh
+
+    - name: Setup app
+      run: bash $SCRIPT_DIR/setup_app.sh
+
+    - name: Test app
+      run: bash $SCRIPT_DIR/test_app.sh
+
+    # For deployment steps below to work, the repositroy must have
+    # deployment/ssh private key added as a secret with name: BLT_SSH_DEPLOYMENT_KEY
+
+    - name: Prepare deployment key
+      run: |
+        ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+        ssh-add - <<< "${{ env.SSH_DEPLOYMENT_KEY }}"
+      if: ${{ env.SSH_DEPLOYMENT_KEY }}
+
+    - name: Deploy branch
+      run: bash $SCRIPT_DIR/deploy_branch.sh
+      if: ${{ env.SSH_DEPLOYMENT_KEY && github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/stage' || github.ref == 'refs/heads/master') }}
+
+    - name: Deploy tag
+      run: bash $SCRIPT_DIR/deploy_tag.sh
+      if: ${{ env.SSH_DEPLOYMENT_KEY && github.event_name == 'push' && contains(github.ref, 'refs/tags') }}
