@@ -18,9 +18,12 @@ class GithubActionsCommands extends BltTasks {
    * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   public function azureInit() {
+    $source = $this->getConfigValue('repo.root') . '/vendor/alexku/blt-github-actions/workflows';
+    $destination = $this->getConfigValue('repo.root') . '/.github/workflows';
+
     $result = $this->taskFilesystemStack()
       ->mkdir($this->getConfigValue('repo.root') . '/.github')
-      ->_copyDir($this->getConfigValue('repo.root') . '/vendor/alexku/blt-github-actions/workflows', $this->getConfigValue('repo.root') . '/.github/workflows', TRUE)
+      ->taskCopyDir([$source => $destination])
       ->stopOnFail()
       ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
       ->run();
