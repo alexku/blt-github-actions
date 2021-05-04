@@ -8,8 +8,8 @@ export PATH=${COMPOSER_BIN}:$PATH
 mkdir -p ~/.ssh
 touch ~/.ssh/config
 chmod 600 ~/.ssh/config
-# Trust all Acquia git/svn hosts.
-printf "Host *.hosting.acquia.com\n  StrictHostKeyChecking no\n" >> ~/.ssh/config
+# Trust all Acquia git/svn and site hosts.
+printf "Host *.hosting.acquia.com\n  StrictHostKeyChecking no\nHost *.acquia-sites.com\n  StrictHostKeyChecking no\n" >> ~/.ssh/config
 # Github actions will run steps as root.
 # Related to https://github.community/t/how-to-run-action-as-a-non-root-user/17572
 mkdir -p /root/.ssh
