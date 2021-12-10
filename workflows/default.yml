@@ -87,6 +87,8 @@ jobs:
         composer validate
         composer self-update
         composer install
+        ${GITHUB_WORKSPACE}/vendor/bin/phpcs --config-set installed_paths "${GITHUB_WORKSPACE}/vendor/drupal/coder/coder_sniffer"
+        ${GITHUB_WORKSPACE}/vendor/bin/phpcs -e --standard=PEAR
         npm install -g gulp-cli gulp
 
     - name: Validate app
