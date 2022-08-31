@@ -10,6 +10,9 @@
     }
   ],
   "require": {},
+  "conflict": {
+    "acquia/blt": "<13.5.1"
+  },
   "extra": {},
   "autoload": {
     "psr-4": {
