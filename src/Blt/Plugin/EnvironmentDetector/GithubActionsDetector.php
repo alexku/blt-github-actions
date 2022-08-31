@@ -9,7 +9,7 @@ class GithubActionsDetector extends EnvironmentDetector {
         return isset($_ENV['CI']) ? 'GITHUB_ACTIONS' : null;
     }
 
-    public static function getCiSettingsFile() {
+    public static function getCiSettingsFile(): string {
         return sprintf('%s/vendor/alexku/blt-github-actions/settings/github.settings.php', dirname(DRUPAL_ROOT));
     }
 }
